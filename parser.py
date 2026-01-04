@@ -94,13 +94,22 @@ def parse_score_line(line: str) -> List[WordleResult]:
     score_str = score_match.group(1)
     score = FAIL_SCORE if score_str == 'X' else int(score_str)
 
-    # Extract all player names after the score
-    # Pattern: @username (can have letters, numbers, dots, underscores)
-    player_matches = re.findall(r'@([\w.]+)', line)
+    # Extract all player mentions - handles both formats:
+    # 1. Plain text: @username
+    # 2. Discord mentions: <@123456789> or <@!123456789>
 
-    for player_name in player_matches:
+    # First try Discord user ID mentions (more common)
+    discord_mentions = re.findall(r'<@!?(\d+)>', line)
+
+    # Then try plain text mentions
+    text_mentions = re.findall(r'(?<![<@])@([\w.]+)(?!>)', line)
+
+    # Combine both - use IDs if available, otherwise use text mentions
+    all_mentions = discord_mentions if discord_mentions else text_mentions
+
+    for player_identifier in all_mentions:
         results.append(WordleResult(
-            player_name=clean_player_name(player_name),
+            player_name=player_identifier,  # Will be user ID or username
             score=score,
             is_winner=is_winner
         ))
