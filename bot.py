@@ -291,6 +291,54 @@ async def ping(ctx):
     await ctx.send(f"🏓 Pong! Latency: {latency}ms")
 
 
+@bot.command(name='players', aliases=['list', 'names'])
+async def list_players(ctx):
+    """
+    Show all player names in the database
+
+    Usage: !players
+    """
+    import sqlite3
+    conn = sqlite3.connect(config.DATABASE_PATH)
+    c = conn.cursor()
+
+    c.execute('''
+        SELECT DISTINCT player_name, COUNT(*) as games
+        FROM results
+        GROUP BY player_name
+        ORDER BY games DESC
+    ''')
+
+    players = c.fetchall()
+    conn.close()
+
+    if not players:
+        await ctx.send("No players found in database!")
+        return
+
+    embed = discord.Embed(
+        title="👥 Players in Database",
+        color=discord.Color.blue(),
+        description="Use these exact names for commands like !stats and !h2h"
+    )
+
+    player_list = []
+    for player_name, games in players:
+        player_list.append(f"**{player_name}** ({games} games)")
+
+    # Split into chunks if too many players
+    chunk_size = 10
+    for i in range(0, len(player_list), chunk_size):
+        chunk = player_list[i:i+chunk_size]
+        embed.add_field(
+            name=f"Players {i+1}-{min(i+chunk_size, len(players))}",
+            value="\n".join(chunk),
+            inline=False
+        )
+
+    await ctx.send(embed=embed)
+
+
 def main():
     """Main entry point"""
     print("=" * 50)
